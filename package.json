@@ -1,0 +1,20 @@
+{
+	"name": "champiDB",
+	"version": "1.0.0",
+	"description": "",
+	"main": "server.js",
+	"dependencies": {
+		"node-fetch": "*",
+		"mongoose": "*"
+	},
+	"private": true,
+	"devDependencies": {
+		"jest": "*"
+	},
+	"scripts": {
+		"test": "jest",
+		"start": "node server.js"
+	},
+	"author": "Benjamin Waterlot",
+	"license": "ISC"
+}
