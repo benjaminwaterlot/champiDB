@@ -1,9 +1,9 @@
 // DECLARATIONS
 const
 	fetch = require(`node-fetch`),
-	mongoose = require(`mongoose`),
+	// mongoose = require(`mongoose`),
 	mongoKey = require(`./mongoDbUrl`),
-	champiDB = mongoose.connection,
+	champiDB = require(`mongodb`).MongoClient,
 	key = require(`./riotkey.js`),
 	addKey = `api_key=${key}`,
 	domain = `https://euw1.api.riotgames.com/lol`,
@@ -89,26 +89,26 @@ const recentGames = acid => fetchAPI(api.allMatchsByAcid(acid))
 const gameDetails = gameId => fetchAPI(api.matchByGameId(gameId))
 
 
-const crawlGames = async gamesArr => {
+const crawlGames = async (gamesArr, games28) => {
 	for(let [index, match] of gamesArr.entries()){
 		await gameDetails(match.gameId)
-			.then(data => {champiDB.collection("games28").insert(data); return data})
+			.then(data => {games28.insert(data); return data})
 			.then(data => log(progressBar(gamesArr, index, data.gameDuration)))
 	}
 }
 
 
-const saveRecentGames = async acid => {
+const saveRecentGames = async (acid, games28) => {
 	const recentMatchsFromPlayer = await recentGames(acid)
 	log(`${recentMatchsFromPlayer.matches.length} games found for this player.
 		Sample : \n`, recentMatchsFromPlayer.matches[0])
-	const save20Games = await crawlGames(recentMatchsFromPlayer.matches)
+
+	const saveTheGames = await crawlGames(recentMatchsFromPlayer.matches, games28)
 }
 
 
-const duplicatePlayer = async acid => {
-	const isDuplicate = await champiDB
-		.collection(`players28`)
+const duplicatePlayer = async (acid, players28) => {
+	const isDuplicate = await players28
 		.find({"accountId": acid})
 		.count()
 	return isDuplicate
@@ -116,7 +116,11 @@ const duplicatePlayer = async acid => {
 
 
 // LAUNCHER
-const gameCrawler = async (promiseRidArray, i = 0) => {
+const gameCrawler = async (promiseRidArray, champiDB, i = 0) => {
+
+	const games28 = champiDB.db('champiDB').collection('games28')
+	const players28 = champiDB.db('champiDB').collection('players28')
+	const stats28 = champiDB.db('champiDB').collection('stats28')
 
 	const ridArray = await promiseRidArray
 
@@ -126,28 +130,30 @@ const gameCrawler = async (promiseRidArray, i = 0) => {
 
 	log(`\n\n\nPlayer to crawl = ${playerAcc.name}`)
 
-	const isAlreadyCrawled = await duplicatePlayer(playerAcid)
+	const isAlreadyCrawled = await duplicatePlayer(playerAcid, players28)
 
 	if (isAlreadyCrawled) {
 
 		log(`KNOWN / go next.`)
-		gameCrawler(ridArray, i+1)
+		gameCrawler(ridArray, champiDB, i+1)
 
 	}	else {
 
-		await saveRecentGames(playerAcid)
-		await champiDB.collection(`players28`).insert(playerAcc)
+		await saveRecentGames(playerAcid, games28)
+		await players28.insert(playerAcc)
 		console.log(`player inserted in database`)
-		gameCrawler(ridArray, i+1)
+		gameCrawler(ridArray, champiDB, i+1)
 
 	}
 
 }
 
+const connectChampiDB = champiDB.connect(mongoKey)
 
-gameCrawler(masterSummsRid, 0)
+connectChampiDB.then(champiDB => {
+	gameCrawler(masterSummsRid, champiDB, 0)
+})
 
 
 // SETUP
-mongoose.connect(mongoKey)
 module.exports = {api, fetchAPI, accFromRid, champIdByName}

@@ -5,12 +5,10 @@
 	"main": "server.js",
 	"dependencies": {
 		"node-fetch": "*",
-		"mongoose": "*"
+		"mongodb": "*"
 	},
 	"private": true,
-	"devDependencies": {
-		"jest": "*"
-	},
+	"devDependencies": {},
 	"scripts": {
 		"test": "jest",
 		"start": "node server.js"
