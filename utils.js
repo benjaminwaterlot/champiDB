@@ -62,5 +62,13 @@ const progressBar = (array, currentIndex, gameDuration) => {
 	return table
 }
 
+const clearCollection = async (coll, db) => {
 
-module.exports = {api, fetchAPI, log, progressBar}
+	const alreadyThere = await db.listCollections({ name: coll }).hasNext()
+	if (alreadyThere) {
+		await db.collection(coll).drop()
+	}
+	return
+}
+
+module.exports = {api, fetchAPI, log, progressBar, clearCollection}

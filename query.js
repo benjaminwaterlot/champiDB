@@ -1,155 +1,88 @@
-const MongoClient = require(`mongodb`).MongoClient,
+const
+	MongoClient = require(`mongodb`).MongoClient,
 	mongoKey = require(`./mongoDbUrl`),
 	u = require('./utils'),
 	championsTable = require('./champions.json')
 
-const champsArray = u.fetchAPI(u.api.championsApi).then(
-	resp => (resp.status || {}).status_code === 429
-		? championsTable
-		: resp
-).then(val => val.data).then(champions => {
-	console.log(champions.Malphite.id)
-	let championsArr = []
-	for (let champion in champions) {
-		championsArr.push(
-			{id: champions[champion]['id'], name: champions[champion]['name']
+;(async () => {
+
+	const client = await MongoClient.connect(mongoKey)
+
+	const
+		champiDB = client.db('champiDB'),
+		games28 = champiDB.collection('games28'),
+		players28 = champiDB.collection('players28'),
+		stats28 = champiDB.collection('stats28')
+
+
+
+	const championsView = (async () => {
+
+		const pipeGroupByChamp = [
+			{$limit: 500},
+			{$unwind: "$participants"},
+			{$group: {
+				_id: "$participants.championId",
+				count: {$sum: 1},
+				game: {$push: "$participants"},
+				summs: {$push: {summ: ["$participants.spell1Id", "$participants.spell2Id"]}}}
 			}
-		)
-	}
-	return championsArr
-}).then(data => {
-	console.log(data);
-	return data
-})
+		]
 
-MongoClient.connect(mongoKey, (err, client) => {
+		await u.clearCollection('champions30', champiDB)
+		await champiDB.command( { create: 'champions30', viewOn: 'games28', pipeline: pipeGroupByChamp } )
 
-	const games28 = client.db('champiDB').collection('games28')
-	const players28 = client.db('champiDB').collection('players28')
-	const stats28 = client.db('champiDB').collection('stats28')
+	})()
 
-	const totalGames = games28.find({}).count().then(
-		total => console.log(`Total games saved : ${total}`)
-	)
+	const statsView = (async () => {
 
-	const aggreg = (id) => games28.aggregate([
-		{
-			$match: {
-				'participants.championId': id
-			}
-		}, {
-			$limit: 100
-		}, {
-			$addFields: {
-				"player": {
-					$arrayElemAt: [
-						{
-							$filter: {
-								input: "$participants",
-								as: "participant",
-								cond: {
-									$eq: ["$$participant.championId", id,]
-								}
+		const pipeStatsByChamp = [
+			{
+				$project: {
+					"wins": {
+						$reduce: {
+							input: "$game.stats.win",
+							initialValue: 0,
+							in: {$add: [
+								"$$value",
+								{$cond: {if: {$eq: ["$$this", true]}, then: 1, else: 0}}
+								]
 							}
-						},
-						0,
-					]
+						}
+					},
+					"spells": {
+						$reduce: {
+							input: "$game",
+							initialValue: [],
+							in: {$concatArrays: ["$$value", [["$$this.spell1Id", "$$this.spell2Id"]]]}
+						}
+					},
+					"items": {
+						$reduce: {
+							input: "$game",
+							initialValue: [],
+							in: {
+								$concatArrays: ["$$value", [
+									[
+										"$$this.stats.item1",
+										"$$this.stats.item2",
+										"$$this.stats.item3",
+										"$$this.stats.item4",
+										"$$this.stats.item5",
+										"$$this.stats.item6",
+									]
+								]]
+							}
+						}
+					},
 				}
 			}
-		}, {
-			$facet: {
-				"wins": [
-					{
-						$project: {
-							win: {
-								$let: {
-									vars: {
-										winnerTeam: {
-											$arrayElemAt: [
-												{
-													$filter: {
-														input: "$teams",
-														as: "team",
-														cond: {
-															$eq: ["$$team.win", "Win",]
-														}
-													}
-												},
-												0,
-											]
-										}
-									}, in: {
-										$eq: ['$$winnerTeam.teamId', '$player.teamId',]
-									}
-								}
-							},
-							_id: 0
-						}
-					}, {
-						$match: {
-							'win': false
-						}
-					}, {
-						$count: 'total'
-					},
-				],
-				"games": [
-					{
-						$count: 'total'
-					}
-				],
-				"summonerSpells": [
-					{
-						$group: {
-							_id: {
-								spell1: "$player.spell1Id",
-								spell2: "$player.spell2Id"
-							},
-							s1: {$first: "$player.spell1Id"},
-							s2: {$first: "$player.spell2Id"},
-							count: {
-								$sum: 1
-							},
-						}
-					}
-				],
-				// "items": [
-				// 	{}
-				// ],
-			}
-		}, {
-			$unwind: "$wins"
-		}, {
-			$unwind: "$games"
-		},
-	], {allowDiskUse: true}).next().then(aggre => u.log(aggre))
+		]
 
-	// const testAggregation = (() => aggreg(51).then(async data => {
-	//
-	// 	await stats28.remove({}) 	stats28.insert(data)
-	//
-	// }))()
+		const stats = await champiDB.collection('champions30').aggregate(pipeStatsByChamp, {allowDiskUse: true}).toArray()
+		console.log(stats)
+		await u.clearCollection('stats30', champiDB)
+		await champiDB.command( { create: 'stats30', viewOn: 'champions30', pipeline: pipeStatsByChamp } )
 
-	champsArray.then(champions => {
-		const stat = async () => {
-			const numberOfGames = await games28.find({}).count()
-			var stats = []
-			for (champion of champions) {
-				console.log(`\n\nstats of ${champion.name} :`)
-				await aggreg(champion.id).then(
-					data => stats.push({
-						name: champion.name,
-						winrate: `${ (data.wins.total / data.games.total * 100).toFixed(1)}%`,
-						playRate: `${ (data.games.total / numberOfGames * 100).toFixed(1)}%`,
-						summonerSpells: data.summonerSpells,
-					})
-				)
-			}
-			console.log(stats)
-			await stats28.remove({})
-			await stats28.insertMany(stats)
-		}
-		stat()
-	})
-
-})
+	})()
+})()
