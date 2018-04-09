@@ -10,6 +10,8 @@ const
 			`${domain}/match/v3/matches/${id}?${addKey}`,
 		championsApi :
 			`${domain}/static-data/v3/champions?locale=en_US&dataById=false&${addKey}`,
+		championById : id =>
+			`${domain}/static-data/v3/champions/${id}?locale=en_US&${addKey}`,
 		summonerByName : summName =>
 			`${domain}/summoner/v3/summoners/by-name/${summName}?${addKey}`,
 		summonerByAcid : accId =>
