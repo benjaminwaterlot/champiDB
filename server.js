@@ -31,27 +31,27 @@ const recentGames = acid => u.fetchAPI(u.api.recentMatchsByAcid(acid))
 const gameDetails = gameId => u.fetchAPI(u.api.matchByGameId(gameId))
 
 
-const saveRecentGames = async (acid, games28) => {
+const saveRecentGames = async (acid, games29) => {
 	const recentMatchsFromPlayer = await recentGames(acid)
 
 	u.log(`${recentMatchsFromPlayer.matches.length} games found for this player.
 		Sample : \n`, recentMatchsFromPlayer.matches[0])
 
-	const saveTheGames = await crawlGames(recentMatchsFromPlayer.matches, games28)
+	const saveTheGames = await crawlGames(recentMatchsFromPlayer.matches, games29)
 }
 
 
-const crawlGames = async (gamesArr, games28) => {
+const crawlGames = async (gamesArr, games29) => {
 	for(let [index, match] of gamesArr.entries()){
 		await gameDetails(match.gameId)
-			.then(data => {games28.insert(data); return data})
+			.then(data => {games29.insert(data); return data})
 			.then(data => u.log(u.progressBar(gamesArr, index, data.gameDuration)))
 	}
 }
 
 
-const duplicatePlayer = async (acid, players28) => {
-	const isDuplicate = await players28
+const duplicatePlayer = async (acid, players29) => {
+	const isDuplicate = await players29
 		.find({"accountId": acid})
 		.count()
 	return isDuplicate
@@ -69,7 +69,7 @@ const gameCrawler = async (promiseRidArray, db, i = 0) => {
 
 	u.log(`\n\n\nPlayer to crawl = ${playerAcc.name}`)
 
-	const isAlreadyCrawled = await duplicatePlayer(playerAcid, db.players28)
+	const isAlreadyCrawled = await duplicatePlayer(playerAcid, db.players29)
 
 	if (isAlreadyCrawled) {
 		u.log(`KNOWN / go next.`)
@@ -77,8 +77,8 @@ const gameCrawler = async (promiseRidArray, db, i = 0) => {
 	}
 	else
 	{
-		await saveRecentGames(playerAcid, db.games28)
-		await db.players28.insert(playerAcc)
+		await saveRecentGames(playerAcid, db.games29)
+		await db.players29.insert(playerAcc)
 		console.log(`Player inserted in database`)
 		gameCrawler(ridArray, db, i+1)
 	}
@@ -90,8 +90,8 @@ connectChampiDB.then(champiDB => {
 	gameCrawler(
 		masterSummsRid,
 		{
-			games28: champiDB.db('champiDB').collection('games28'),
-			players28: champiDB.db('champiDB').collection('players28'),
+			games29: champiDB.db('champiDB').collection('games29'),
+			players29: champiDB.db('champiDB').collection('players29'),
 		},
 		0
 	)
