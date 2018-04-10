@@ -31,27 +31,27 @@ const recentGames = acid => u.fetchAPI(u.api.recentMatchsByAcid(acid))
 const gameDetails = gameId => u.fetchAPI(u.api.matchByGameId(gameId))
 
 
-const saveRecentGames = async (acid, games29) => {
+const saveRecentGames = async (acid, gameDatabase) => {
 	const recentMatchsFromPlayer = await recentGames(acid)
 
 	u.log(`${recentMatchsFromPlayer.matches.length} games found for this player.
 		Sample : \n`, recentMatchsFromPlayer.matches[0])
 
-	const saveTheGames = await crawlGames(recentMatchsFromPlayer.matches, games29)
+	const saveTheGames = await crawlGames(recentMatchsFromPlayer.matches, gameDatabase)
 }
 
 
-const crawlGames = async (gamesArr, games29) => {
+const crawlGames = async (gamesArr, gameDatabase) => {
 	for(let [index, match] of gamesArr.entries()){
 		await gameDetails(match.gameId)
-			.then(data => {games29.insert(data); return data})
+			.then(data => {gameDatabase.insert(data); return data})
 			.then(data => u.log(u.progressBar(gamesArr, index, data.gameDuration)))
 	}
 }
 
 
-const duplicatePlayer = async (acid, players29) => {
-	const isDuplicate = await players29
+const duplicatePlayer = async (acid, playersDatabase) => {
+	const isDuplicate = await playersDatabase
 		.find({"accountId": acid})
 		.count()
 	return isDuplicate
