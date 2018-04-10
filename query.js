@@ -94,7 +94,15 @@ const
 
 		}
 
-		console.log(`\nAFTER AGGREGATION, HERE ARE THE STATS :\n`, stats.spells)
+		console.log(`\nAFTER AGGREGATION, HERE ARE THE STATS :\n`,
+			`\n\n=> GAMES: \n`,
+			stats.games,
+			`\n\n=> WINS: \n`,
+			stats.wins,
+			`\n\n=> SPELLS: \n`,
+			stats.spells,
+			`\n\n`,
+		)
 	}
 
 
