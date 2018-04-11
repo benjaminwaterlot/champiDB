@@ -16,13 +16,18 @@ const
 		stats28 = champiDB.collection('stats28')
 
 
-	const statsForOneChamp = async (id) => {
+	const statsForOneChamp = async (id = 41) => {
 
 		await u.clearCollection('temp', champiDB)
 		await champiDB.command( { create: 'temp', viewOn: 'games28', pipeline: pipe(id) } )
 
-		// console.log(`\nGATHERING STATS FOR ${(await u.fetchAPI(u.api.championById(id))).name.toUpperCase()}\n`)
-		console.log(`\nCHAMPION COLLECTION CREATED : ${await champiDB.collection('temp').find({}).count()} GAMES FOUND \n`)
+		console.log(`\nGATHERING STATS FOR ${
+			championsTable.find(val => val.id === id).name.toUpperCase()
+			}\n`)
+
+		console.log(`\nCHAMPION COLLECTION CREATED : ${
+			await champiDB.collection('temp').find({}).count()
+			} GAMES FOUND \n`)
 
 
 		const stats = {
@@ -70,44 +75,86 @@ const
 				])
 				.toArray(),
 
-			// items:
-			// await champiDB.collection('temp')
-			// 	.aggregate([
-			// 		{
-			// 			$project: {
-			// 				"items": [
-			// 					"$participants.stats.item0",
-			// 					"$participants.stats.item1",
-			// 					"$participants.stats.item2",
-			// 					"$participants.stats.item3",
-			// 					"$participants.stats.item4",
-			// 					"$participants.stats.item5",
-			// 					"$participants.stats.item6",
-			// 				]
-			// 			}
-			// 		},
-			// 		{
-			// 			$sortByCount: "$items"
-			// 		},
-			// 	])
-			// 	.toArray()
+				items:
+				await champiDB.collection('temp')
+					.aggregate([
+						{
+							$project: {
+								"items": [
+									"$participants.stats.item0",
+									"$participants.stats.item1",
+									"$participants.stats.item2",
+									"$participants.stats.item3",
+									"$participants.stats.item4",
+									"$participants.stats.item5",
+								],
+								"gameId": 1
+							}
+						},
+						{
+							$unwind: "$items"
+						},
+						{
+							$sort: {"items": 1}
+						},
+						{
+							$group: {_id: "$gameId", items: {$push: "$items"}}
+						},
+						{
+							$sortByCount: "$items"
+						},
+					])
+					.toArray(),
+
+					trinket:
+					await champiDB.collection('temp')
+						.aggregate([
+							{
+								$project: {
+									"trinket": [
+										"$participants.stats.item6",
+									]
+								}
+							},
+							{
+								$sortByCount: "$trinket"
+							},
+						])
+						.toArray()
 
 		}
 
-		console.log(`\nAFTER AGGREGATION, HERE ARE THE STATS :\n`,
-			`\n\n=> GAMES: \n`,
-			stats.games,
-			`\n\n=> WINS: \n`,
-			stats.wins,
-			`\n\n=> SPELLS: \n`,
-			stats.spells,
-			`\n\n`,
-		)
+		// console.log(`\nAFTER AGGREGATION, HERE ARE THE STATS :\n`,
+		// 	`\n\n=> GAMES: \n`,
+		// 	stats.games,
+		// 	`\n\n=> WINS: \n`,
+		// 	stats.wins,
+		// 	`\n\n=> SPELLS: \n`,
+		// 	stats.spells,
+		// 	`\n\n=> ITEMS: \n`,
+		// 	stats.items.slice(0,5),
+		// 	`\n\n=> TRINKET: \n`,
+		// 	stats.trinket,
+		// 	`\n\n`,
+		// )
+
+		return stats
+
 	}
 
+	var globalStats = []
 
-	statsForOneChamp(51)
+	for (champion of championsTable) {
+		var statsOfThisChamp = await statsForOneChamp(champion.id)
+		statsOfThisChamp.id = champion.id
+		statsOfThisChamp.name = champion.name
 
+		champiDB.collection('stats31').insert(statsOfThisChamp)	
+
+		globalStats.push(statsOfThisChamp)
+
+		console.log(globalStats)
+	}
 
 
 })()

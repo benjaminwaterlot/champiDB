@@ -55,10 +55,14 @@ const delayPromise = delay =>
 	})
 
 
-const progressBar = (array, currentIndex, gameDuration) => {
+const progressBar = (array, currentIndex, gameDuration, status) => {
 	var table = "["
 	for(let [indMap, val] of array.entries()){
-		indMap > currentIndex ? table += '-' : table += 'x'
+		indMap > currentIndex
+			? table += '-'
+			: indMap === currentIndex && status === "ko"
+				? table += "/"
+				: table += 'x'
 	}
 	table += `] ${Math.round(gameDuration/60)} min`
 	return table

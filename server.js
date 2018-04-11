@@ -32,22 +32,41 @@ const gameDetails = gameId => u.fetchAPI(u.api.matchByGameId(gameId))
 
 
 const saveRecentGames = async (acid, gameDatabase) => {
-	const recentMatchsFromPlayer = await recentGames(acid)
+	const recentMatchsFromPlayer = (await recentGames(acid)).matches
 
-	u.log(`${recentMatchsFromPlayer.matches.length} games found for this player.
-		Sample : \n`, recentMatchsFromPlayer.matches[0])
+	u.log(`${recentMatchsFromPlayer.length} games found for this player.`)
 
-	const saveTheGames = await crawlGames(recentMatchsFromPlayer.matches, gameDatabase)
-}
+	// const saveTheGames = await crawlGames(recentMatchsFromPlayer.matches, gameDatabase)
 
-
-const crawlGames = async (gamesArr, gameDatabase) => {
-	for(let [index, match] of gamesArr.entries()){
+	for(let [index, match] of recentMatchsFromPlayer.entries()){
 		await gameDetails(match.gameId)
-			.then(data => {gameDatabase.insert(data); return data})
-			.then(data => u.log(u.progressBar(gamesArr, index, data.gameDuration)))
+			.then(data => {
+				gameDatabase
+					.insert(data)
+					.then(
+						success => {
+							console.log(u.progressBar(recentMatchsFromPlayer, index, data.gameDuration, 'ok'))
+						},
+						failure => {
+							failure.code === 11000
+								? console.log(u.progressBar(recentMatchsFromPlayer, index, 0, 'ko'))
+								: console.log('ERROR ON INSERTION IN DB, CODE : ', failure.code)
+						}
+					)
+				return data
+			})
 	}
+
 }
+
+
+// const crawlGames = async (gamesArr, gameDatabase) => {
+// 	for(let [index, match] of gamesArr.entries()){
+// 		await gameDetails(match.gameId)
+// 			.then(data => {gameDatabase.insert(data); return data})
+// 			.then(data => u.log(u.progressBar(gamesArr, index, data.gameDuration)))
+// 	}
+// }
 
 
 const duplicatePlayer = async (acid, playersDatabase) => {
@@ -62,14 +81,11 @@ const duplicatePlayer = async (acid, playersDatabase) => {
 const gameCrawler = async (promiseRidArray, db, i = 0) => {
 
 	const ridArray = await promiseRidArray
-
 	const playerAcc = await accFromRid(ridArray[i])
-
 	const playerAcid = playerAcc.accountId
+	const isAlreadyCrawled = await duplicatePlayer(playerAcid, db.players29)
 
 	u.log(`\n\n\nPlayer to crawl = ${playerAcc.name}`)
-
-	const isAlreadyCrawled = await duplicatePlayer(playerAcid, db.players29)
 
 	if (isAlreadyCrawled) {
 		u.log(`KNOWN / go next.`)
@@ -79,7 +95,9 @@ const gameCrawler = async (promiseRidArray, db, i = 0) => {
 	{
 		await saveRecentGames(playerAcid, db.games29)
 		await db.players29.insert(playerAcc)
+
 		console.log(`Player inserted in database`)
+
 		gameCrawler(ridArray, db, i+1)
 	}
 }
