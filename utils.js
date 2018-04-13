@@ -8,6 +8,8 @@ const
 			`${domain}/league/v3/masterleagues/by-queue/RANKED_SOLO_5x5?${addKey}`,
 		matchByGameId : id =>
 			`${domain}/match/v3/matches/${id}?${addKey}`,
+		timelineByGameId: id =>
+			`${domain}/match/v3/timelines/by-match/${id}?${addKey}`,
 		championsApi :
 			`${domain}/static-data/v3/champions?locale=en_US&dataById=false&${addKey}`,
 		championById : id =>
