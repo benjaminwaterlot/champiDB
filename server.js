@@ -36,8 +36,6 @@ const saveRecentGames = async (acid, gameDatabase) => {
 
 	u.log(`${recentMatchsFromPlayer.length} games found for this player.`)
 
-	// const saveTheGames = await crawlGames(recentMatchsFromPlayer.matches, gameDatabase)
-
 	for(let [index, match] of recentMatchsFromPlayer.entries()){
 		await gameDetails(match.gameId)
 			.then(data => {
@@ -58,15 +56,6 @@ const saveRecentGames = async (acid, gameDatabase) => {
 	}
 
 }
-
-
-// const crawlGames = async (gamesArr, gameDatabase) => {
-// 	for(let [index, match] of gamesArr.entries()){
-// 		await gameDetails(match.gameId)
-// 			.then(data => {gameDatabase.insert(data); return data})
-// 			.then(data => u.log(u.progressBar(gamesArr, index, data.gameDuration)))
-// 	}
-// }
 
 
 const duplicatePlayer = async (acid, playersDatabase) => {
