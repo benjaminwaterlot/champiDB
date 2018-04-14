@@ -1,33 +1,22 @@
 const
-	s = require('./server'),
+	s = require('./server2'),
+	u = require('./utils'),
 	fetch = require(`node-fetch`)
 
 
+// describe(`UTILITIES`, () => {
+// })
 
-describe(`API URLS`, () => {
-	test(`summonerByName should return a valid url`, () => {
-
-		const expected = /https:\/\/euw1\.api\.riotgames\.com\/lol\/summoner\/v3\/summoners\/by\-name\/Superben93\?api_key=RGAPI[-a-z0-9]+/
-		expect(s.api.summonerByName(`Superben93`)).toMatch(expected)
-
-	})
-})
-
-describe(`UTILITIES TEST`, () => {
-
-	test(`fetchAPI should fetch a URL`, () => {
-		const url = s.api.summonerByName(`Superben93`)
-		return s.fetchAPI(url)
+describe(`FETCHING MODULES`, () => {
+	test(`masterLeagues should be a URL`, function coucou () {
+		expect(u.api.masterLeagues).toEqual(expect.any(String))
+		expect(u.api.masterLeagues).toMatch(/http/)
+		expect(u.api.masterLeagues).toMatch(/RGAPI-/)
 	})
 
+	test(`summsRidFromLeague should return Rids from LeagueAPI`, (coucou) => {
 
-	test(`accFromRid should return an account Object from a regular Id`, () => {
-		return s.accFromRid(23316365)
-			.then(data => expect(data).toEqual(
-				expect.objectContaining({
-					'accountId': expect.any(Number)
-				})
-			))
+		expect(s.summsRidFromLeague(coucou)).toEqual(expect.any(Array))
+
 	})
-
 })

@@ -1,13 +1,10 @@
-// DECLARATIONS
 const
 	mongoKey = require(`./mongoDbUrl`),
 	champiDB = require(`mongodb`).MongoClient,
-	u = require(`./utils`)
+	u = require(`./utils`),
+	connectChampiDB = champiDB.connect(mongoKey)
 
-// UTILS
 
-
-// MODULES
 const summsRidFromLeague = leagueAPI => u.fetchAPI(leagueAPI)
 	.then(data => data.entries.map(
 		val => val.playerOrTeamId
@@ -36,8 +33,6 @@ const saveRecentGames = async (acid, gameDatabase) => {
 
 	u.log(`${recentMatchsFromPlayer.length} games found for this player.`)
 
-	// const saveTheGames = await crawlGames(recentMatchsFromPlayer.matches, gameDatabase)
-
 	for(let [index, match] of recentMatchsFromPlayer.entries()){
 		await gameDetails(match.gameId)
 			.then(data => {
@@ -48,7 +43,7 @@ const saveRecentGames = async (acid, gameDatabase) => {
 							console.log(u.progressBar(recentMatchsFromPlayer, index, data.gameDuration, 'ok'))
 						},
 						failure => {
-							failure.code === 11000
+								failure.code === 11000
 								? console.log(u.progressBar(recentMatchsFromPlayer, index, 0, 'ko'))
 								: console.log('ERROR ON INSERTION IN DB, CODE : ', failure.code)
 						}
@@ -56,17 +51,7 @@ const saveRecentGames = async (acid, gameDatabase) => {
 				return data
 			})
 	}
-
 }
-
-
-// const crawlGames = async (gamesArr, gameDatabase) => {
-// 	for(let [index, match] of gamesArr.entries()){
-// 		await gameDetails(match.gameId)
-// 			.then(data => {gameDatabase.insert(data); return data})
-// 			.then(data => u.log(u.progressBar(gamesArr, index, data.gameDuration)))
-// 	}
-// }
 
 
 const duplicatePlayer = async (acid, playersDatabase) => {
@@ -90,9 +75,7 @@ const gameCrawler = async (promiseRidArray, db, i = 0) => {
 	if (isAlreadyCrawled) {
 		u.log(`KNOWN / go next.`)
 		gameCrawler(ridArray, db, i+1)
-	}
-	else
-	{
+	} else {
 		await saveRecentGames(playerAcid, db.games29)
 		await db.players29.insert(playerAcc)
 
@@ -102,7 +85,6 @@ const gameCrawler = async (promiseRidArray, db, i = 0) => {
 	}
 }
 
-const connectChampiDB = champiDB.connect(mongoKey)
 
 connectChampiDB.then(champiDB => {
 	gameCrawler(
