@@ -1,22 +1,23 @@
 const
-	s = require('./server2'),
-	u = require('./utils'),
-	fetch = require(`node-fetch`)
+	s = require('./server'),
+	fetch = require(`node-fetch`),
+	u = require('./fn/utils')
 
 
 // describe(`UTILITIES`, () => {
 // })
 
-describe(`FETCHING MODULES`, () => {
-	test(`masterLeagues should be a URL`, function coucou () {
-		expect(u.api.masterLeagues).toEqual(expect.any(String))
-		expect(u.api.masterLeagues).toMatch(/http/)
-		expect(u.api.masterLeagues).toMatch(/RGAPI-/)
+describe(`API URLS`, () => {
+	test(`gameTimeline should return a timeline for this player`, async () => {
+		const timeline = await s.gameTimeline(27446952, 3599557458)
+		expect(timeline).toEqual(expect.any(Object))
+		expect((timeline||{}).frameInterval).toEqual(expect.any(Number))
 	})
 
-	test(`summsRidFromLeague should return Rids from LeagueAPI`, (coucou) => {
+describe(`UTILITIES TEST`, () => {
 
-		expect(s.summsRidFromLeague(coucou)).toEqual(expect.any(Array))
-
+	test(`fetchAPI should fetch a URL`, () => {
+		const url = u.api.summonerByName(`Superben93`)
+		return u.fetchAPI(url)
 	})
 })

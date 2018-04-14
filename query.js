@@ -2,7 +2,7 @@ const
 	MongoClient = require(`mongodb`).MongoClient,
 	mongoKey = require(`./mongoDbUrl`),
 	u = require('./utils'),
-	championsTable = require('./champions.json'),
+	championsTable = require('./static/champions.json'),
 	pipe = require('./statPipe')
 
 ;(async () => {

@@ -1,6 +1,6 @@
 const
 	fetch = require(`node-fetch`),
-	key = require(`./riotkey.js`),
+	key = require(`../riotkey.js`),
 	addKey = `api_key=${key}`,
 	domain = `https://euw1.api.riotgames.com/lol`,
 	api = {
@@ -8,10 +8,14 @@ const
 			`${domain}/league/v3/masterleagues/by-queue/RANKED_SOLO_5x5?${addKey}`,
 		matchByGameId : id =>
 			`${domain}/match/v3/matches/${id}?${addKey}`,
+		timelineByGameId: id =>
+			`${domain}/match/v3/timelines/by-match/${id}?${addKey}`,
 		championsApi :
 			`${domain}/static-data/v3/champions?locale=en_US&dataById=false&${addKey}`,
 		championById : id =>
 			`${domain}/static-data/v3/champions/${id}?locale=en_US&${addKey}`,
+		itemsApi :
+		`${domain}/static-data/v3/items?locale=en_US&${addKey}`,
 		summonerByName : summName =>
 			`${domain}/summoner/v3/summoners/by-name/${summName}?${addKey}`,
 		summonerByAcid : accId =>
@@ -26,6 +30,7 @@ const
 			`${domain}/match/v3/matchlists/by-account/${summId}?${addKey}`,
 	}
 
+
 const fetchAPI = url => fetch(url)
 	.then(delayPromise(1100))
 	.then(resp => resp.json())
@@ -34,8 +39,7 @@ const fetchAPI = url => fetch(url)
 		if (!data) {log(`fetching this url returned FALSY : ${url}`); return}
 
 		else if ((data.status || {}).status_code === (403 || 429 || 404) ) {
-			log(`\n\nFETCHING THIS URL RETURNED A ${data.status.status_code} STATUS :
-			\n${url}`)
+			log(`\n\nFETCHING THIS URL RETURNED A ${data.status.status_code} STATUS :\n${url}`)
 		}
 
 		else {
@@ -68,8 +72,22 @@ const progressBar = (array, currentIndex, gameDuration, status) => {
 	return table
 }
 
-const clearCollection = async (coll, db) => {
 
+const duplicatePlayer = async (account, playersDatabase) => {
+	const isDuplicate = await playersDatabase
+		.find({"accountId": account.accountId})
+		.count()
+	return isDuplicate
+}
+
+
+const insertPlayer = async (playerAccount, playersDatabase) => {
+	await playersDatabase.insert(playerAccount)
+	console.log(`Player inserted in database`)
+}
+
+
+const clearCollection = async (coll, db) => {
 	const alreadyThere = await db.listCollections({ name: coll }).hasNext()
 	if (alreadyThere) {
 		await db.collection(coll).drop()
@@ -77,4 +95,13 @@ const clearCollection = async (coll, db) => {
 	return
 }
 
-module.exports = {api, fetchAPI, log, progressBar, clearCollection}
+
+module.exports = {
+	api,
+	fetchAPI,
+	log,
+	progressBar,
+	duplicatePlayer,
+	insertPlayer,
+	clearCollection
+}

@@ -1,7 +1,7 @@
 const MongoClient = require(`mongodb`).MongoClient,
 	mongoKey = require(`./mongoDbUrl`),
 	s = require('./server'),
-	championsTable = require('./champions.json')
+	championsTable = require('./static/champions.json')
 
 MongoClient.connect(mongoKey, (err, client) => {
 

@@ -1,14 +1,17 @@
 {
 	"name": "champiDB",
 	"version": "1.0.0",
-	"description": "",
+	"description": "Coucou",
 	"main": "server.js",
 	"dependencies": {
 		"node-fetch": "*",
-		"mongodb": "*"
+		"mongodb": "*",
+		"lodash": "*"
 	},
 	"private": true,
-	"devDependencies": {},
+	"devDependencies": {
+		"jest": "*"
+	},
 	"scripts": {
 		"test": "jest",
 		"start": "node server.js"
