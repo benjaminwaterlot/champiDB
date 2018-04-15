@@ -21,6 +21,7 @@ const accFromRid = rid => u.fetchAPI(u.api.summonerByRid(rid))
 const recentGames = acid => u.fetchAPI(u.api.recentMatchsByAcid(acid))
 	.catch(err => console.log('\n\nFETCHING OF recentGames ABORTED: \n', err))
 
+
 const gameTimeline = (gameId) => u.fetchAPI(u.api.timelineByGameId(gameId))
 	.then(data => qualifyTimelineData(data))
 	.catch(err => console.log('\n\nFETCHING OF gameTimeline ABORTED: \n', err))
@@ -49,7 +50,6 @@ const saveRecentGames = async (acid, gameDatabase) => {
 
 	u.log(`${recentMatchsFromPlayer.length} games found for this player.`)
 
-
 	for (let [index, match] of recentMatchsFromPlayer.entries()){
 		await gameDetails(match.gameId)
 			.then(data => {
@@ -70,7 +70,7 @@ const saveRecentGames = async (acid, gameDatabase) => {
 	}
 }
 
-// LAUNCHER
+
 const gameCrawler = async (promiseRidArray, db, i = 0) => {
 
 	const ridArray = await promiseRidArray
