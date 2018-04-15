@@ -123,23 +123,7 @@ const
 						.toArray()
 
 		}
-
-		// console.log(`\nAFTER AGGREGATION, HERE ARE THE STATS :\n`,
-		// 	`\n\n=> GAMES: \n`,
-		// 	stats.games,
-		// 	`\n\n=> WINS: \n`,
-		// 	stats.wins,
-		// 	`\n\n=> SPELLS: \n`,
-		// 	stats.spells,
-		// 	`\n\n=> ITEMS: \n`,
-		// 	stats.items.slice(0,5),
-		// 	`\n\n=> TRINKET: \n`,
-		// 	stats.trinket,
-		// 	`\n\n`,
-		// )
-
 		return stats
-
 	}
 
 	var globalStats = []
@@ -149,7 +133,7 @@ const
 		statsOfThisChamp.id = champion.id
 		statsOfThisChamp.name = champion.name
 
-		champiDB.collection('stats31').insert(statsOfThisChamp)	
+		champiDB.collection('stats31').insert(statsOfThisChamp)
 
 		globalStats.push(statsOfThisChamp)
 

@@ -14,11 +14,6 @@ const summsRidFromLeague = leagueAPI => u.fetchAPI(leagueAPI)
 	.catch(err => console.log('\n\nFETCHING OF summsRidFromLeague ABORTED: \n', err))
 
 
-const champIdByName = id => u.fetchAPI(u.api.championsApi)
-	.then(data => data.data[id].id)
-	.catch(err => console.log('\n\nFETCHING OF champIdByName ABORTED: \n', err))
-
-
 const accFromRid = rid => u.fetchAPI(u.api.summonerByRid(rid))
 	.catch(err => console.log('\n\nFETCHING OF accFromRid ABORTED: \n', err))
 
@@ -27,18 +22,28 @@ const accFromRid = rid => u.fetchAPI(u.api.summonerByRid(rid))
 const recentGames = acid => u.fetchAPI(u.api.recentMatchsByAcid(acid))
 	.catch(err => console.log('\n\nFETCHING OF recentGames ABORTED: \n', err))
 
-
-const gameDetails = gameId => u.fetchAPI(u.api.matchByGameId(gameId))
-	.then(async gameData => {
-		gameData.timeline = await gameTimeline(gameId)
-		return gameData
-	})
-	.catch(err => console.log('\n\nFETCHING OF gameDetails ABORTED: \n', err))
-
-
 const gameTimeline = (gameId) => u.fetchAPI(u.api.timelineByGameId(gameId))
 	.then(data => qualifyTimelineData(data))
 	.catch(err => console.log('\n\nFETCHING OF gameTimeline ABORTED: \n', err))
+
+
+const gameDetails = gameId => u.fetchAPI(u.api.matchByGameId(gameId))
+	.then(async gameData => {
+
+		const timelinesArray = (Object.entries(await gameTimeline(gameId)))
+
+		for (const [key, timeline] of timelinesArray) {
+			const player = gameData.participants.find(
+				participant => participant.participantId.toString() == key
+			)
+			player['events'] = timeline
+		}
+
+		return gameData
+
+	})
+	.catch(err => console.log('\n\nFETCHING OF gameDetails ABORTED: \n', err))
+
 
 const saveRecentGames = async (acid, gameDatabase) => {
 	const recentMatchsFromPlayer = (await recentGames(acid)).matches
@@ -100,4 +105,4 @@ connectChampiDB.then(champiDB => {
 })
 
 // TEST SETUP
-module.exports = {accFromRid, champIdByName, gameTimeline}
+module.exports = {accFromRid, gameTimeline}
