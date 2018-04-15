@@ -1,101 +1,103 @@
-// DECLARATIONS
 const
 	mongoKey = require(`./mongoDbUrl`),
 	champiDB = require(`mongodb`).MongoClient,
-	u = require(`./utils`)
+	connectChampiDB = champiDB.connect(mongoKey),
+	u = require(`./fn/utils`),
+	_ = require(`lodash`),
+	qualifyTimelineData = require(`./fn/qualifyTimelineData`)
 
-// UTILS
 
-
-// MODULES
 const summsRidFromLeague = leagueAPI => u.fetchAPI(leagueAPI)
 	.then(data => data.entries.map(
 		val => val.playerOrTeamId
 	))
-
-
-const champIdByName = id => u.fetchAPI(u.api.championsApi)
-	.then(data => data.data[id].id)
+	.catch(err => console.log('\n\nFETCHING OF summsRidFromLeague ABORTED: \n', err))
 
 
 const accFromRid = rid => u.fetchAPI(u.api.summonerByRid(rid))
+	.catch(err => console.log('\n\nFETCHING OF accFromRid ABORTED: \n', err))
 
 
-const masterSummsRid = summsRidFromLeague(u.api.masterLeagues)
-
-
-// UPDATE HERE TO MODULATE THE 20 OR 100 GAMES
 const recentGames = acid => u.fetchAPI(u.api.recentMatchsByAcid(acid))
+	.catch(err => console.log('\n\nFETCHING OF recentGames ABORTED: \n', err))
+
+
+const gameTimeline = (gameId) => u.fetchAPI(u.api.timelineByGameId(gameId))
+	.then(data => qualifyTimelineData(data))
+	.catch(err => console.log('\n\nFETCHING OF gameTimeline ABORTED: \n', err))
 
 
 const gameDetails = gameId => u.fetchAPI(u.api.matchByGameId(gameId))
+	.then(async gameData => {
+
+		const timelinesArray = (Object.entries(await gameTimeline(gameId)))
+
+		for (const [key, timeline] of timelinesArray) {
+			const player = gameData.participants.find(
+				participant => participant.participantId.toString() == key
+			)
+			player['events'] = timeline
+		}
+
+		return gameData
+
+	})
+	.catch(err => console.log('\n\nFETCHING OF gameDetails ABORTED: \n', err))
 
 
-const saveRecentGames = async (acid, games28) => {
-	const recentMatchsFromPlayer = await recentGames(acid)
+const saveRecentGames = async (acid, gameDatabase) => {
+	const recentMatchsFromPlayer = (await recentGames(acid)).matches
 
-	u.log(`${recentMatchsFromPlayer.matches.length} games found for this player.
-		Sample : \n`, recentMatchsFromPlayer.matches[0])
+	u.log(`${recentMatchsFromPlayer.length} games found for this player.`)
 
-	const saveTheGames = await crawlGames(recentMatchsFromPlayer.matches, games28)
-}
-
-
-const crawlGames = async (gamesArr, games28) => {
-	for(let [index, match] of gamesArr.entries()){
+	for (let [index, match] of recentMatchsFromPlayer.entries()){
 		await gameDetails(match.gameId)
-			.then(data => {games28.insert(data); return data})
-			.then(data => u.log(u.progressBar(gamesArr, index, data.gameDuration)))
+			.then(data => {
+				gameDatabase
+					.insert(data)
+					.then(
+						async success => {
+							console.log(u.progressBar(recentMatchsFromPlayer, index, data.gameDuration, 'ok'))
+						},
+						failure => {
+								failure.code === 11000
+								? console.log(u.progressBar(recentMatchsFromPlayer, index, 0, 'ko'))
+								: console.log('ERROR ON INSERTION IN DB, CODE : ', failure.code)
+						}
+					)
+				return data
+			})
 	}
 }
 
 
-const duplicatePlayer = async (acid, players28) => {
-	const isDuplicate = await players28
-		.find({"accountId": acid})
-		.count()
-	return isDuplicate
-}
-
-
-// LAUNCHER
 const gameCrawler = async (promiseRidArray, db, i = 0) => {
 
 	const ridArray = await promiseRidArray
-
 	const playerAcc = await accFromRid(ridArray[i])
+	const playerAlreadyDone = await u.duplicatePlayer(playerAcc, db.players)
 
-	const playerAcid = playerAcc.accountId
+	console.log(`\n\n\nPLAYER TO CRAWL = ${playerAcc.name}`)
 
-	u.log(`\n\n\nPlayer to crawl = ${playerAcc.name}`)
-
-	const isAlreadyCrawled = await duplicatePlayer(playerAcid, db.players28)
-
-	if (isAlreadyCrawled) {
+	if (playerAlreadyDone) {
 		u.log(`KNOWN / go next.`)
 		gameCrawler(ridArray, db, i+1)
-	}
-	else
-	{
-		await saveRecentGames(playerAcid, db.games28)
-		await db.players28.insert(playerAcc)
-		console.log(`Player inserted in database`)
+	} else {
+		await saveRecentGames(playerAcc.accountId, db.games)
+		u.insertPlayer(playerAcc, db.players)
 		gameCrawler(ridArray, db, i+1)
 	}
 }
 
-const connectChampiDB = champiDB.connect(mongoKey)
 
 connectChampiDB.then(champiDB => {
 	gameCrawler(
-		masterSummsRid,
+		summsRidFromLeague(u.api.masterLeagues),
 		{
-			games28: champiDB.db('champiDB').collection('games28'),
-			players28: champiDB.db('champiDB').collection('players28'),
-		},
-		0
+			games: champiDB.db('champiDB').collection('games29'),
+			players: champiDB.db('champiDB').collection('players29'),
+		}
 	)
 })
 
-// TEST SETUP
-module.exports = {accFromRid, champIdByName}
+module.exports = {accFromRid, gameTimeline}
