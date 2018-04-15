@@ -18,7 +18,6 @@ const accFromRid = rid => u.fetchAPI(u.api.summonerByRid(rid))
 	.catch(err => console.log('\n\nFETCHING OF accFromRid ABORTED: \n', err))
 
 
-// UPDATE HERE TO MODULATE THE 20 OR 100 GAMES
 const recentGames = acid => u.fetchAPI(u.api.recentMatchsByAcid(acid))
 	.catch(err => console.log('\n\nFETCHING OF recentGames ABORTED: \n', err))
 
@@ -76,18 +75,16 @@ const gameCrawler = async (promiseRidArray, db, i = 0) => {
 
 	const ridArray = await promiseRidArray
 	const playerAcc = await accFromRid(ridArray[i])
-	const isAlreadyCrawled = await u.duplicatePlayer(playerAcc, db.players29)
+	const playerAlreadyDone = await u.duplicatePlayer(playerAcc, db.players)
 
-	u.log(`\n\n\nPlayer to crawl = ${playerAcc.name}`)
+	console.log(`\n\n\nPLAYER TO CRAWL = ${playerAcc.name}`)
 
-	if (isAlreadyCrawled) {
+	if (playerAlreadyDone) {
 		u.log(`KNOWN / go next.`)
 		gameCrawler(ridArray, db, i+1)
-	}
-	else
-	{
-		await saveRecentGames(playerAcc.accountId, db.games29)
-		u.insertPlayer(playerAcc, db.players29)
+	} else {
+		await saveRecentGames(playerAcc.accountId, db.games)
+		u.insertPlayer(playerAcc, db.players)
 		gameCrawler(ridArray, db, i+1)
 	}
 }
@@ -97,12 +94,10 @@ connectChampiDB.then(champiDB => {
 	gameCrawler(
 		summsRidFromLeague(u.api.masterLeagues),
 		{
-			games29: champiDB.db('champiDB').collection('games29'),
-			players29: champiDB.db('champiDB').collection('players29'),
-		},
-		0
+			games: champiDB.db('champiDB').collection('games29'),
+			players: champiDB.db('champiDB').collection('players29'),
+		}
 	)
 })
 
-// TEST SETUP
 module.exports = {accFromRid, gameTimeline}
