@@ -11,15 +11,13 @@ const
 
 	const
 		champiDB = client.db('champiDB'),
-		games28 = champiDB.collection('games28'),
-		players28 = champiDB.collection('players28'),
-		stats28 = champiDB.collection('stats28')
+		games = champiDB.collection('games29')
 
 
 	const statsForOneChamp = async (id = 41) => {
 
 		await u.clearCollection('temp', champiDB)
-		await champiDB.command( { create: 'temp', viewOn: 'games28', pipeline: pipe(id) } )
+		await champiDB.command( { create: 'temp', viewOn: 'games', pipeline: pipe(id) } )
 
 		console.log(`\nGATHERING STATS FOR ${
 			championsTable.find(val => val.id === id).name.toUpperCase()

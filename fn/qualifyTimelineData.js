@@ -23,6 +23,12 @@ const qualifyTimelineData = timelineData => {
 					})
 				}
 
+				if (event.type === 'ITEM_UNDO' && event.beforeId !== 0) {
+					const playerItems = events[event.participantId.toString()].items
+					const deleted = _.last(playerItems.filter(item => item.itemId === event.beforeId))
+					_.pullAt(playerItems, _.lastIndexOf(playerItems, deleted))
+				}
+
 				if (event.type === 'SKILL_LEVEL_UP') {
 					events[event.participantId.toString()].skills.push({
 						skillSlot: event.skillSlot,
