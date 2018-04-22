@@ -1,7 +1,7 @@
 const
 	MongoClient = require(`mongodb`).MongoClient,
 	mongoKey = require(`./mongoDbUrl`),
-	u = require('./utils'),
+	u = require('./fn/utils'),
 	championsTable = require('./static/champions.json'),
 	pipe = require('./statPipe')
 
@@ -17,7 +17,7 @@ const
 	const statsForOneChamp = async (id = 41) => {
 
 		await u.clearCollection('temp', champiDB)
-		await champiDB.command( { create: 'temp', viewOn: 'games', pipeline: pipe(id) } )
+		await champiDB.command( { create: 'temp', viewOn: 'games28', pipeline: pipe(id) } )
 
 		console.log(`\nGATHERING STATS FOR ${
 			championsTable.find(val => val.id === id).name.toUpperCase()
@@ -124,6 +124,7 @@ const
 		return stats
 	}
 
+	await u.clearCollection('stats31', champiDB)
 	var globalStats = []
 
 	for (champion of championsTable) {
@@ -138,5 +139,6 @@ const
 		console.log(globalStats)
 	}
 
+	
 
 })()
