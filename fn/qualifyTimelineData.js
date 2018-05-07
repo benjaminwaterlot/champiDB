@@ -1,4 +1,5 @@
 const _ = require ('lodash')
+const itemsTable = require('../static/items.json')
 
 const qualifyTimelineData = timelineData => {
 
@@ -16,10 +17,12 @@ const qualifyTimelineData = timelineData => {
 		(events, frame) => {
 			for (event of frame.events) {
 
-				if (event.type === 'ITEM_PURCHASED') {
+				if (event.type === 'ITEM_PURCHASED'
+					&& Number.isInteger(((itemsTable.data[event.itemId]||{}).gold||{}).total)
+				) {
 					events[event.participantId.toString()].items.push({
 						itemId: event.itemId,
-						timestamp: event.timestamp
+						gold: ((itemsTable.data[event.itemId]||{}).gold||{}).total
 					})
 				}
 
@@ -30,10 +33,7 @@ const qualifyTimelineData = timelineData => {
 				}
 
 				if (event.type === 'SKILL_LEVEL_UP') {
-					events[event.participantId.toString()].skills.push({
-						skillSlot: event.skillSlot,
-						timestamp: event.timestamp
-					})
+					events[event.participantId.toString()].skills.push(event.skillSlot)
 				}
 
 			}
