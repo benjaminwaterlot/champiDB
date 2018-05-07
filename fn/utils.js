@@ -83,7 +83,8 @@ const duplicatePlayer = async (account, playersDatabase) => {
 
 const insertPlayer = async (playerAccount, playersDatabase) => {
 	await playersDatabase.insert(playerAccount)
-	console.log(`Player inserted in database`)
+		.then(delayPromise(10))
+		.then(data => {console.log(`Player inserted in database`)})
 }
 
 
