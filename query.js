@@ -4,9 +4,8 @@ const MongoClient = require(`mongodb`).MongoClient,
 	championsTable = require('./static/champions.json'),
 	pipe = require('./statPipe'),
 	fs = require('fs'),
-	_ = require('lodash');
-
-(async () => {
+	_ = require('lodash')
+;(async () => {
 	const client = await MongoClient.connect(mongoKey)
 
 	const champiDB = client.db('champiDB'),
