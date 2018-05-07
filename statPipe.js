@@ -1,18 +1,17 @@
-
-
-
-const pipeOfChamp = (id) => [
+const pipeOfChamp = id => [
 	{
-		$match: {"participants.championId": id, "gameMode": "CLASSIC", "queueId": 420}
+		$match: {
+			'participants.championId': id,
+			gameMode: 'CLASSIC',
+			queueId: 420,
+		},
 	},
 	{
-		$unwind: "$participants"
+		$unwind: '$participants',
 	},
 	{
-		$match: {"participants.championId": id}
-	}
+		$match: { 'participants.championId': id },
+	},
 ]
-
-
 
 module.exports = pipeOfChamp
