@@ -1,4 +1,4 @@
-const mongoKey = require(`./mongoDbUrl`).default.default,
+const mongoKey = require(`./mongoDbUrl`),
 	champiDB = require(`mongodb`).MongoClient,
 	connectChampiDB = champiDB.connect(mongoKey),
 	u = require(`./fn/utils`),
@@ -68,8 +68,11 @@ const saveRecentGames = async (acid, gameDatabase) => {
 					)
 				},
 				failure => {
-					failure.code === 11000
-						? console.log(u.progressBar(recentMatchsFromPlayer, index, 0, 'ko'))
+					const IS_DUPLICATE = 11000
+					failure.code === IS_DUPLICATE
+						? console.log(
+								u.progressBar(recentMatchsFromPlayer, index, 60, 'ko'),
+						  )
 						: console.log('ERROR ON INSERTION IN DB, CODE : ', failure.code)
 				},
 			)
@@ -97,6 +100,7 @@ const gameCrawler = async (promiseRidArray, db, i = 0) => {
 
 connectChampiDB.then(champiDB => {
 	gameCrawler(summsRidFromLeague(u.api.masterLeagues), {
+		champiDB: champiDB.db('champiDB'),
 		games: champiDB.db('champiDB').collection('games29'),
 		players: champiDB.db('champiDB').collection('players29'),
 	})
