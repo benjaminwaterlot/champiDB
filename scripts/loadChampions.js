@@ -1,10 +1,7 @@
 const fs = require('fs')
-const u = require('../utils')
-
-
+const u = require('../fn/utils')
 ;(async () => {
-
-	const championsTable = (await u.fetchAPI(u.api.championsApi))
+	const championsTable = await u.fetchAPI(u.api.championsApi)
 
 	var championsArray = []
 
@@ -13,11 +10,11 @@ const u = require('../utils')
 	}
 
 	fs.writeFile(
-		'static/champions.json',
+		'../static/champions.json',
 		JSON.stringify(championsArray, null, 2),
-		(err) => err
-			? console.log('\n\nERROR WITH FS.WRITEFILE...\n', err)
-			: console.log('\n\nDONE ! :-)\nDATA SAMPLE :', championsArray[8])
+		err =>
+			err
+				? console.log('\n\nERROR WITH FS.WRITEFILE...\n', err)
+				: console.log('\n\nDONE ! :-)\nDATA SAMPLE :', championsArray[8]),
 	)
-
 })()

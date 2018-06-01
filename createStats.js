@@ -5,10 +5,14 @@ const MongoClient = require(`mongodb`).MongoClient,
 	fs = require('fs'),
 	_ = require('lodash')
 
-const pipes = {
-	champion: id => [{ $match: { championId: id } }],
+const roles = require('./pipelines/roles')
 
-	countGames: [{ $count: 'counter' }],
+const pipes = {
+	initialMatch: id => [{ $match: { championId: id } }],
+
+	gamesCount: [{ $count: 'counter' }],
+
+	wins: [{ $match: { 'stats.win': true } }, { $count: 'counter' }],
 
 	spells: [
 		{ $project: { spells: ['$spell1Id', '$spell2Id'], gameId: 1 } },
@@ -19,7 +23,13 @@ const pipes = {
 		{ $limit: 5 },
 	],
 
-	wins: [{ $match: { 'stats.win': true } }, { $count: 'counter' }],
+	roles: [
+		{
+			$sortByCount: {
+				$mergeObjects: [{ role: '$timeline.role' }, { lane: '$timeline.lane' }],
+			},
+		},
+	],
 
 	firstBloods: [
 		{
@@ -42,7 +52,7 @@ const pipes = {
 	],
 }
 
-const spellsPipe = id => [].concat(pipes.champion(id), pipes.spells)
+const spellsPipe = id => [].concat(pipes.initialMatch(id), pipes.spells)
 ;(async () => {
 	const champiDB = (await MongoClient.connect(mongoKey)).db('champiDB')
 	const players400 = champiDB.collection('players400')
@@ -51,36 +61,48 @@ const spellsPipe = id => [].concat(pipes.champion(id), pipes.spells)
 	u.clearCollection('stats400', champiDB)
 
 	for (champion of _.sortBy(championsTable, 'name')) {
-		// ;(async champion => {
-		const computedStats = {}
+		;(async champion => {
+			const computedStats = {}
 
-		computedStats.name = champion.name
-		computedStats._id = champion.id
+			computedStats.name = champion.name
+			computedStats._id = champion.id
 
-		computedStats.games = (await players400
-			.aggregate([].concat(pipes.champion(champion.id), pipes.countGames))
-			.next()).counter
+			computedStats.games = (await players400
+				.aggregate([].concat(pipes.initialMatch(champion.id), pipes.gamesCount))
+				.next()).counter
 
-		computedStats.spells = await players400
-			.aggregate([].concat(pipes.champion(champion.id), pipes.spells))
-			.toArray()
+			computedStats.roles = await roles({
+				collection: players400,
+				championId: champion.id,
+			})
 
-		computedStats.wins = (await players400
-			.aggregate([].concat(pipes.champion(champion.id), pipes.wins))
-			.toArray())[0].counter
+			computedStats.spells = await players400
+				.aggregate([].concat(pipes.initialMatch(champion.id), pipes.spells))
+				.toArray()
 
-		computedStats.winRate =
-			(computedStats.wins / computedStats.games * 100).toFixed(1) + '%'
+			computedStats.wins = (await players400
+				.aggregate([].concat(pipes.initialMatch(champion.id), pipes.wins))
+				.toArray())[0].counter
 
-		computedStats.firstBloods = (await players400
-			.aggregate([].concat(pipes.champion(champion.id), pipes.firstBloods))
-			.next()).counter
-		computedStats.firstBloodRate =
-			(computedStats.firstBloods / computedStats.games * 100).toFixed(1) + '%'
+			computedStats.winRate =
+				(computedStats.wins / computedStats.games * 100).toFixed(1) + '%'
 
-		console.log(`\n\n\nSTATS OF ${champion.name.toUpperCase()}`)
-		console.log(computedStats)
-		stats400.insertOne(computedStats)
-		// })(champion)
+			computedStats.firstBloods = (await players400
+				.aggregate(
+					[].concat(pipes.initialMatch(champion.id), pipes.firstBloods),
+				)
+				.next()).counter
+
+			computedStats.firstBloodRate =
+				(computedStats.firstBloods / computedStats.games * 100).toFixed(1) + '%'
+
+			console.log(
+				`\n\n\nSTATS OF ${champion.name.toUpperCase()}\n`,
+				computedStats,
+				computedStats.roles,
+			)
+
+			stats400.insertOne(computedStats)
+		})(champion)
 	}
 })()
