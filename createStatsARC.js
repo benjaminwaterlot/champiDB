@@ -1,8 +1,9 @@
-const MongoClient = require(`mongodb`).MongoClient
-const mongoKey = require(`./mongoDbUrl`)
-const u = require('./fn/utils')
-const championsTable = require('./static/champions.json')
-const _ = require('lodash')
+const MongoClient = require(`mongodb`).MongoClient,
+	mongoKey = require(`./mongoDbUrl`),
+	u = require('./fn/utils'),
+	championsTable = require('./static/champions.json'),
+	fs = require('fs'),
+	_ = require('lodash')
 
 const roles = require('./pipelines/roles')
 
@@ -84,7 +85,7 @@ const spellsPipe = id => [].concat(pipes.initialMatch(id), pipes.spells)
 				.toArray())[0].counter
 
 			computedStats.winRate =
-				((computedStats.wins / computedStats.games) * 100).toFixed(1) + '%'
+				(computedStats.wins / computedStats.games * 100).toFixed(1) + '%'
 
 			computedStats.firstBloods = (await players400
 				.aggregate(
@@ -93,8 +94,7 @@ const spellsPipe = id => [].concat(pipes.initialMatch(id), pipes.spells)
 				.next()).counter
 
 			computedStats.firstBloodRate =
-				((computedStats.firstBloods / computedStats.games) * 100).toFixed(1) +
-				'%'
+				(computedStats.firstBloods / computedStats.games * 100).toFixed(1) + '%'
 
 			console.log(
 				`\n\n\nSTATS OF ${champion.name.toUpperCase()}\n`,
