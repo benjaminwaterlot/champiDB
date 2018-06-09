@@ -2,12 +2,30 @@ const MongoClient = require(`mongodb`).MongoClient
 const mongoKey = require(`./mongoDbUrl`)
 const u = require('./fn/utils')
 const championsTable = require('./static/champions.json')
-const _ = require('lodash')
+const itemsTable = require('./static/items.json')
+const _ = require('lodash/fp')
+_.reduce = require('lodash/fp/reduce').convert({ cap: false })
 
-const roles = require('./pipelines/roles')
+const positionsTable = championsTable.reduce((table, currentChamp) => {
+	const currentChampWithRoles = ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'].map(
+		position => ({ ...currentChamp, position: position }),
+	)
+	return [...table, ...currentChampWithRoles]
+}, [])
+
+const finalItemsIdTable = _.flow(
+	_.reduce((result, value, key) => [...result, { ...value, id: key }], []),
+	_.filter(
+		item => !item.into && (item.gold || {}).total > 1000 && item.depth > 1,
+	),
+	_.map(item => item.id),
+)(itemsTable.data)
+console.log(finalItemsIdTable)
 
 const pipes = {
-	initialMatch: id => [{ $match: { championId: id } }],
+	initialMatch: ({ id, position }) => [
+		{ $match: { championId: id, position: position } },
+	],
 
 	gamesCount: [{ $count: 'counter' }],
 
@@ -22,12 +40,67 @@ const pipes = {
 		{ $limit: 5 },
 	],
 
-	roles: [
+	allItems_startingItems: [
 		{
-			$sortByCount: {
-				$mergeObjects: [{ role: '$timeline.role' }, { lane: '$timeline.lane' }],
+			$project: {
+				itemsSet: {
+					$reduce: {
+						input: '$events.items',
+						initialValue: { totalGold: 0, items: [] },
+						in: {
+							startingItems: {
+								$concatArrays: [
+									'$$value.items',
+									{
+										$cond: {
+											if: {
+												$and: [
+													{
+														$lte: [
+															{ $add: ['$$value.totalGold', '$$this.gold'] },
+															500,
+														],
+													},
+													{ $gt: ['$$this.gold', 0] },
+												],
+											},
+											then: ['$$this.itemId'],
+											else: [],
+										},
+									},
+								],
+							},
+							allItems: {
+								$concatArrays: [
+									'$$value.items',
+									{
+										$cond: {
+											if: {
+												$and: [
+													{
+														$lte: [
+															{ $add: ['$$value.totalGold', '$$this.gold'] },
+															500,
+														],
+													},
+													{ $gt: ['$$this.gold', 0] },
+												],
+											},
+											then: ['$$this.itemId'],
+											else: [],
+										},
+									},
+								],
+							},
+							totalGold: {
+								$add: ['$$value.totalGold', '$$this.gold'],
+							},
+						},
+					},
+				},
 			},
 		},
+		{ $sortByCount: '$itemsSet.startingItems' },
 	],
 
 	firstBloods: [
@@ -50,59 +123,61 @@ const pipes = {
 		{ $count: 'counter' },
 	],
 }
-
-const spellsPipe = id => [].concat(pipes.initialMatch(id), pipes.spells)
+//
 ;(async () => {
 	const champiDB = (await MongoClient.connect(mongoKey)).db('champiDB')
-	const players400 = champiDB.collection('players400')
-	const stats400 = champiDB.collection('stats400')
+	const playersDB = champiDB.collection('players000')
+	const statsDB = champiDB.collection('stats000')
 
-	u.clearCollection('stats400', champiDB)
+	u.clearCollection('stats000', champiDB)
 
-	for (champion of _.sortBy(championsTable, 'name')) {
+	for (champion of _.sortBy('name')(positionsTable)) {
 		;(async champion => {
 			const computedStats = {}
 
 			computedStats.name = champion.name
-			computedStats._id = champion.id
+			computedStats.id = champion.id
+			computedStats.position = champion.position
 
-			computedStats.games = (await players400
-				.aggregate([].concat(pipes.initialMatch(champion.id), pipes.gamesCount))
-				.next()).counter
+			computedStats.games = (await playersDB
+				.aggregate(pipes.initialMatch(champion))
+				.toArray()).length
 
-			computedStats.roles = await roles({
-				collection: players400,
-				championId: champion.id,
-			})
+			if (computedStats.games === 0) return null
 
-			computedStats.spells = await players400
-				.aggregate([].concat(pipes.initialMatch(champion.id), pipes.spells))
+			computedStats.spells = await playersDB
+				.aggregate([...pipes.initialMatch(champion), ...pipes.spells])
 				.toArray()
 
-			computedStats.wins = (await players400
-				.aggregate([].concat(pipes.initialMatch(champion.id), pipes.wins))
-				.toArray())[0].counter
+			computedStats.wins = (
+				(await playersDB
+					.aggregate([...pipes.initialMatch(champion), ...pipes.wins])
+					.next()) || {}
+			).counter
+
+			computedStats.startingItems = await playersDB
+				.aggregate([...pipes.initialMatch(champion), ...pipes.startingItems])
+				.toArray()
 
 			computedStats.winRate =
 				((computedStats.wins / computedStats.games) * 100).toFixed(1) + '%'
 
-			computedStats.firstBloods = (await players400
-				.aggregate(
-					[].concat(pipes.initialMatch(champion.id), pipes.firstBloods),
-				)
-				.next()).counter
+			computedStats.firstBloods = (
+				(await playersDB
+					.aggregate([...pipes.initialMatch(champion), ...pipes.firstBloods])
+					.next()) || {}
+			).counter
 
 			computedStats.firstBloodRate =
 				((computedStats.firstBloods / computedStats.games) * 100).toFixed(1) +
 				'%'
 
 			console.log(
-				`\n\n\nSTATS OF ${champion.name.toUpperCase()}\n`,
+				`\n\n\nSTATS OF ${champion.name.toUpperCase()} ${champion.position.toUpperCase()}\n`,
 				computedStats,
-				computedStats.roles,
 			)
 
-			stats400.insertOne(computedStats)
+			statsDB.insertOne(computedStats)
 		})(champion)
 	}
 })()
